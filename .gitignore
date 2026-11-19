@@ -5,7 +5,7 @@
 # Python
 __pycache__/
 *.py[cod]
-venv/
+.venv/
 # Testing
 .pytest_cache/
 # Data files
