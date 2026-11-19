@@ -1,0 +1,16 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+# Python
+__pycache__/
+*.py[cod]
+venv/
+# Testing
+.pytest_cache/
+# Data files
+*.csv
+# Allow small synthetic test data
+!data/sample/**
+# Jupyter
+.ipynb_checkpoints/
