@@ -4,8 +4,13 @@ from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# Project file and folder paths
 DATA_DIR = PROJECT_ROOT/"data"
 CANDIDATE_LIST = DATA_DIR/ "id_list.csv"
+RAW_DIR = DATA_DIR / "raw"
+MOVIES_CACHE = RAW_DIR / "movies"
+CREDITS_CACHE = RAW_DIR / "credits"
+PROCESSED_DIR = DATA_DIR / "processed"
 
 load_dotenv(PROJECT_ROOT / ".env")
 

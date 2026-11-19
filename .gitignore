@@ -10,6 +10,7 @@ __pycache__/
 .pytest_cache/
 # Data files
 *.csv
+*.json
 # Allow small synthetic test data
 !data/sample/**
 # Jupyter
