@@ -31,13 +31,13 @@ Run these commands from the main `StreamVault` folder.
 **1. Create a virtual environment**
 
 ```bash
-python -m venv venv
+python -m venv .venv
 ```
 
 **2. Activate it (Windows)**
 
 ```bash
-venv\Scripts\activate
+.\.venv\Scripts\Activate.ps1
 ```
 
 **3. Install the required packages**
