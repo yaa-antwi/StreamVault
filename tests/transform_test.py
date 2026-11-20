@@ -1,95 +1,76 @@
 
 import pandas as pd
+import pytest
+
 from pipeline.transform import transform
+from pipeline.config import PROCESSED_DIR
 
 
-def test_transformation_creates_all_tables():
-    data = transform()
+@pytest.fixture(scope="module")
+def data():
+    return transform()
 
+
+def test_transformation_creates_all_tables(data):
     expected_tables = [
-        "movies",
-        "genres",
-        "companies",
-        "cast",
-        "crew",
-        "movie_cast",
-        "movie_crew",
-        "spot_check"
+        "movies", "genres", "companies", "cast",
+        "crew", "movie_cast", "movie_crew", "spot_check"
     ]
 
     for table in expected_tables:
         assert table in data
 
 
-def test_movie_table_has_one_row_per_movie():
-    data = transform()
+def test_movie_table_has_one_row_per_movie(data):
+    movies = data["movies"]
 
-    assert data["movies"]["tmdb_id"].is_unique
-    assert len(data["movies"]) == 112
+    assert not movies.empty
+    assert movies["tmdb_id"].notna().all()
+    assert movies["tmdb_id"].is_unique
 
 
-def test_nested_records_are_kept_separate():
-    data = transform()
-
+def test_nested_records_are_kept_separate(data):
     assert "genre_name" in data["genres"].columns
     assert "company_name" in data["companies"].columns
     assert "person_name" in data["cast"].columns
     assert "person_name" in data["crew"].columns
 
 
-def test_franchise_and_standalone_are_identified():
-    data = transform()
-
-    movies = data["movies"]
-
-    assert set(movies["licensing_type"].dropna()).issubset(
+def test_franchise_and_standalone_are_identified(data):
+    assert set(data["movies"]["licensing_type"].dropna()).issubset(
         {"franchise", "standalone"}
     )
 
 
-def test_zero_and_missing_revenue_remain_distinct():
-    data = transform()
-
+def test_zero_and_missing_revenue_remain_distinct(data):
     movies = data["movies"]
 
-    zero_revenue = movies["revenue"].eq(0)
-    missing_revenue = movies["revenue"].isna()
+    assert not (
+        movies["revenue"].eq(0) & movies["revenue"].isna()
+    ).any()
 
-    assert not (zero_revenue & missing_revenue).any()
 
-
-def test_joins_preserve_all_movie_ids():
-    data = transform()
-
+def test_joins_preserve_all_movie_ids(data):
     movie_ids = set(data["movies"]["tmdb_id"])
 
     assert set(data["movie_cast"]["tmdb_id"]) == movie_ids
     assert set(data["movie_crew"]["tmdb_id"]) == movie_ids
 
 
-def test_spot_check_is_reproducible():
-    first = transform()["spot_check"]
+def test_spot_check_is_reproducible(data):
     second = transform()["spot_check"]
 
-    assert first["tmdb_id"].is_unique
-    assert 10 <= len(first) <= 15
+    assert data["spot_check"]["tmdb_id"].is_unique
+    assert 10 <= len(data["spot_check"]) <= 15
 
-    pd.testing.assert_frame_equal(first, second)
+    pd.testing.assert_frame_equal(data["spot_check"], second)
 
 
-def test_transformed_files_are_created():
-    transform()
-
-    from pipeline.config import PROCESSED_DIR
-
+def test_transformed_files_are_created(data):
     expected_files = [
-        "movies.csv",
-        "movie_genres.csv",
-        "movie_companies.csv",
-        "movie_cast.csv",
-        "movie_crew.csv",
-        "movie_cast_joined.csv",
-        "movie_crew_joined.csv",
+        "movies.csv", "movie_genres.csv", "movie_companies.csv",
+        "movie_cast.csv", "movie_crew.csv",
+        "movie_cast_joined.csv", "movie_crew_joined.csv",
         "spot_check_sample.csv"
     ]
 

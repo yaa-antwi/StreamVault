@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 
@@ -18,13 +17,21 @@ def load_movies():
             errors="coerce"
         )
 
-    # Calculate revenue-to-budget multiple only where budget is valid.
-    movies["revenue_budget_multiple"] = np.where(
+    # Calculate revenue-to-budget multiple only where both values are valid.
+    valid_budget = (
         movies["budget"].notna()
         & (movies["budget"] > 0)
-        & movies["revenue"].notna(),
-        movies["revenue"] / movies["budget"],
-        np.nan
+    )
+
+    valid_revenue = movies["revenue"].notna()
+
+    movies["revenue_budget_multiple"] = np.nan
+
+    valid_rows = valid_budget & valid_revenue
+
+    movies.loc[valid_rows, "revenue_budget_multiple"] = (
+        movies.loc[valid_rows, "revenue"]
+        / movies.loc[valid_rows, "budget"]
     )
 
     return movies
@@ -85,6 +92,9 @@ def compare_licensing_types(periods):
         summary.insert(0, "period", period_name)
         results.append(summary)
 
+    if not results:
+        return pd.DataFrame()
+
     final_summary = pd.concat(
         results,
         ignore_index=True
@@ -121,8 +131,14 @@ def analyse_collections(periods):
                         sorted(x.dropna().unique())
                     )
                 ),
-                total_reported_revenue=("revenue", "sum"),
-                total_reported_budget=("budget", "sum"),
+                total_reported_revenue=(
+                    "revenue",
+                    lambda x: x.sum(min_count=1)
+                ),
+                total_reported_budget=(
+                    "budget",
+                    lambda x: x.sum(min_count=1)
+                ),
                 median_title_multiple=(
                     "revenue_budget_multiple",
                     "median"
@@ -135,26 +151,34 @@ def analyse_collections(periods):
             .reset_index()
             .sort_values(
                 ["median_title_multiple", "candidate_title_count"],
-                ascending=[False, False]
+                ascending=[False, False],
+                na_position="last"
             )
         )
 
         collection_summary.insert(0, "period", period_name)
         results.append(collection_summary)
 
-    final_collections = pd.concat(
-        results,
-        ignore_index=True
-    )
+    if results:
+        final_collections = pd.concat(
+            results,
+            ignore_index=True
+        )
+    else:
+        final_collections = pd.DataFrame()
 
     print("\nFRANCHISE COLLECTION ANALYSIS")
     print(final_collections.to_string(index=False))
 
-    six_title_collections = final_collections[
-        final_collections["candidate_title_count"] == 6
-    ].copy()
+    if not final_collections.empty:
+        six_title_collections = final_collections[
+            final_collections["candidate_title_count"] == 6
+        ].copy()
+    else:
+        six_title_collections = pd.DataFrame()
 
     print("\nCOLLECTIONS WITH SIX CANDIDATE TITLES")
+
     if six_title_collections.empty:
         print("No collections with exactly six candidate titles.")
     else:
@@ -197,17 +221,23 @@ def rank_titles(periods):
 
         results.append(rankings)
 
-    final_rankings = pd.concat(
-        results,
-        ignore_index=True
-    )
+    if results:
+        final_rankings = pd.concat(
+            results,
+            ignore_index=True
+        )
+    else:
+        final_rankings = pd.DataFrame()
 
     print("\nTOP INDIVIDUAL FILMS")
+
     for period_name in periods:
         print(f"\n{period_name}")
+
         period_rankings = final_rankings[
             final_rankings["period"] == period_name
         ]
+
         print(period_rankings.head(20).to_string(index=False))
 
     return final_rankings
@@ -290,8 +320,9 @@ def analyse_cast_and_crew():
 
 def main():
 
-    print("STREAMVAULT LICENSING ANALYSIS")
+    FINAL_DIR.mkdir(parents=True, exist_ok=True)
 
+    print("STREAMVAULT LICENSING ANALYSIS")
 
     movies = load_movies()
 
@@ -353,27 +384,27 @@ def main():
 
     print("\nIMPORTANT LIMITATIONS")
     print(
-        " Revenue divided by production budget is not profit "
+        "Revenue divided by production budget is not profit "
         "or licensing return."
     )
     print(
-        " Licensing prices, marketing costs and distribution "
+        "Licensing prices, marketing costs and distribution "
         "costs are not available."
     )
     print(
-        " Historical revenue figures have not been adjusted "
+        "Historical revenue figures have not been adjusted "
         "for inflation."
     )
     print(
-        " Collection results cover candidate films in this "
+        "Collection results cover candidate films in this "
         "dataset, not necessarily every film in a complete bundle."
     )
     print(
-        " Cast billing order is used as a practical indicator "
+        "Cast billing order is used as a practical indicator "
         "of lead actors."
     )
     print(
-        " Repeated actors and directors do not prove audience "
+        "Repeated actors and directors do not prove audience "
         "demand or future financial performance."
     )
 

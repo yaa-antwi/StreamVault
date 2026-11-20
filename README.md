@@ -2,9 +2,9 @@
 
 ## Project overview
 
-This project analyses StreamVault's film licensing candidates using movie data retrieved from TMdb.
+This project analyses StreamVault's film licensing candidates using movie data retrieved from TMDb.
 
-The work includes extracting, validating, transforming, checking and loading the data, then analysing franchise and standalone film performance.
+The work includes extracting, validating, transforming, checking and loading the data, followed by an analysis of franchise and standalone film performance.
 
 The original list contained 127 entries. After accounting for duplicates and invalid IDs, 117 unique valid IDs remained. Of these, 112 titles were retrieved and 5 could not be found.
 
@@ -18,7 +18,6 @@ StreamVault/
 ├── explore/
 ├── pipeline/
 ├── tests/
-├── .env
 ├── .gitignore
 ├── requirements.txt
 └── run_pipeline.py

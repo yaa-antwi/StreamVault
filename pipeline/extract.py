@@ -150,6 +150,7 @@ def reconcile_candidates(candidates, results_df):
     return reconciliation
 
 
+
 def extract_all_movies():
     candidates = load_candidate_list()
 
@@ -161,6 +162,9 @@ def extract_all_movies():
 
     session = create_session()
     results = []
+
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = PROCESSED_DIR / "extraction_log.csv"
 
     print(f"Original entries: {len(candidates)}")
     print(f"Unique numeric IDs: {len(unique_ids)}")
@@ -175,16 +179,12 @@ def extract_all_movies():
             "credits_status": credits_status
         })
 
+        # Save progress after each movie.
+        pd.DataFrame(results).to_csv(log_file, index=False)
+
         print(movie_id, movie_status, credits_status)
 
     results_df = pd.DataFrame(results)
-
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-
-    results_df.to_csv(
-        PROCESSED_DIR / "extraction_log.csv",
-        index=False
-    )
 
     reconciliation = reconcile_candidates(candidates, results_df)
 
@@ -198,6 +198,7 @@ def extract_all_movies():
     print(f"Original entries accounted for: {len(reconciliation)}")
 
     return results_df
+
 
 
 if __name__ == "__main__":

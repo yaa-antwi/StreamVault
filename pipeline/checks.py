@@ -1,4 +1,3 @@
-
 import pandas as pd
 from pipeline.config import PROCESSED_DIR
 
@@ -14,7 +13,9 @@ def check_tables(tables):
     for name in required:
         if name not in tables:
             results.append(["Required tables", "FAIL", f"{name} missing"])
-            return pd.DataFrame(results, columns=["check", "status", "details"])
+            return pd.DataFrame(
+                results, columns=["check", "status", "details"]
+            )
 
     movies = tables["movies"]
     movie_ids = movies["tmdb_id"].astype("string")
@@ -46,16 +47,32 @@ def check_tables(tables):
 
     # Financial values must be numeric when present.
     for column in ["budget", "revenue"]:
-        values = movies[column].replace("", pd.NA)
-        numeric = pd.to_numeric(values, errors="coerce")
-        valid = (values.isna() | numeric.notna()).all()
+        values = movies[column].astype("string").str.strip()
+        missing = values.isna() | values.eq("").fillna(False)
 
-        add(column, valid, "Non-blank values must be numeric.")
+        numeric = pd.to_numeric(
+            values.mask(missing), errors="coerce"
+        )
+
+        valid = (missing | numeric.notna()).all()
+
+        add(
+            column,
+            valid,
+            "Non-blank values must be numeric."
+        )
 
         if column == "revenue":
+            zero_source = values.str.fullmatch(
+                r"[+-]?0+(?:\.0*)?(?:[eE][+-]?\d+)?"
+            ).fillna(False)
+
+            zero_preserved = numeric[zero_source].eq(0).all()
+            missing_preserved = numeric[missing].isna().all()
+
             add(
                 "Zero and missing revenue",
-                True,
+                valid and zero_preserved and missing_preserved,
                 f"Zero: {numeric.eq(0).sum()}; "
                 f"missing: {numeric.isna().sum()}."
             )

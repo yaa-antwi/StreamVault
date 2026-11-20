@@ -1,4 +1,3 @@
-
 import shutil
 import pandas as pd
 
@@ -22,6 +21,8 @@ TRANSFORMED_FILES = [
 
 
 def check_quality_report(processed_dir):
+    """Stop loading if the quality report is missing or contains failures."""
+
     report_file = processed_dir / "checks_report.csv"
 
     if not report_file.exists():
@@ -32,8 +33,13 @@ def check_quality_report(processed_dir):
     if report.empty or "status" not in report.columns:
         raise ValueError("Quality report is invalid.")
 
-    if (report["status"].str.upper() == "FAIL").any():
-        raise RuntimeError("Quality checks failed.")
+    statuses = report["status"].astype(str).str.strip().str.upper()
+
+    if (statuses == "FAIL").any():
+        raise RuntimeError("Quality checks failed. Files were not loaded.")
+
+    if not statuses.isin(["PASS", "FAIL"]).all():
+        raise ValueError("Quality report contains an unknown status.")
 
 
 def load(
@@ -41,6 +47,8 @@ def load(
     final_dir=FINAL_DIR,
     candidate_list=CANDIDATE_LIST
 ):
+    """Publish validated pipeline outputs to the final directory."""
+
     check_quality_report(processed_dir)
 
     files = [
@@ -53,17 +61,22 @@ def load(
         processed_dir / name for name in TRANSFORMED_FILES
     )
 
-    missing = [file.name for file in files if not file.exists()]
+    missing = [
+        file.name for file in files
+        if not file.exists()
+    ]
 
     if missing:
-        raise FileNotFoundError(f"Missing files: {missing}")
+        raise FileNotFoundError(
+            f"Missing files required for loading: {missing}"
+        )
 
     final_dir.mkdir(parents=True, exist_ok=True)
 
     for file in files:
         shutil.copy2(file, final_dir / file.name)
 
-    print("Loading completed.")
+    print("\nLOADING COMPLETED")
     print("Files published:", len(files))
     print("Final location:", final_dir)
 

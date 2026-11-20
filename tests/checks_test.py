@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 from pipeline.checks import check_tables
@@ -79,6 +78,30 @@ def test_zero_and_missing_revenue_are_distinguished():
 
     assert "Zero: 1" in details
     assert "missing: 1" in details
+
+
+def test_zero_revenue_is_preserved():
+    tables = create_sample_tables()
+    report = check_tables(tables)
+
+    status = report.loc[
+        report["check"] == "Zero and missing revenue", "status"
+    ].iloc[0]
+
+    assert status == "PASS"
+
+
+def test_invalid_revenue_fails_zero_and_missing_check():
+    tables = create_sample_tables()
+    tables["movies"].loc[0, "revenue"] = "unknown"
+
+    report = check_tables(tables)
+
+    status = report.loc[
+        report["check"] == "Zero and missing revenue", "status"
+    ].iloc[0]
+
+    assert status == "FAIL"
 
 
 def test_missing_movie_in_join_fails():
