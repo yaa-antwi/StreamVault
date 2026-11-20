@@ -154,6 +154,7 @@ def transform():
     # 2. Use only successfully retrieved movie records.
     successful_movies = extraction_log[
         extraction_log["movie_status"].isin(SUCCESS_STATUSES)
+        & extraction_log["credits_status"].isin(SUCCESS_STATUSES)
     ]
 
     movie_ids = successful_movies["tmdb_id"].tolist()
@@ -270,6 +271,7 @@ def transform():
             })
 
     # 10. Create the separate DataFrames.
+    # One row per movie.
     movies_df = pd.DataFrame(
         movie_records,
         columns=[
@@ -285,6 +287,7 @@ def transform():
         ]
     )
 
+    # One row per genre belonging to a movie
     genres_df = pd.DataFrame(
         genre_records,
         columns=[
@@ -294,6 +297,7 @@ def transform():
         ]
     )
 
+    # One row per production company belonging to a movie.
     companies_df = pd.DataFrame(
         company_records,
         columns=[
@@ -304,6 +308,7 @@ def transform():
         ]
     )
 
+    # One row per cast member belonging to a movie.
     cast_df = pd.DataFrame(
         cast_records,
         columns=[
@@ -315,6 +320,7 @@ def transform():
         ]
     )
 
+    # One row per crew member belonging to a movie.
     crew_df = pd.DataFrame(
         crew_records,
         columns=[

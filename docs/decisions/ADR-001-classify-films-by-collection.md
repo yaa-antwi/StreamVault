@@ -6,35 +6,41 @@
 
 ## Context
 
-StreamVault needs to compare franchise films with standalone films. The source data provides a collection field, but some films do not belong to a collection.
+StreamVault needs to compare the financial performance of franchise films against standalone films. The source data provides a `belongs_to_collection` field, which identifies films associated with a collection. Films without a collection are treated as standalone.
 
-A consistent classification rule is necessary to avoid making subjective decisions about which films count as franchises.
+The classification affects the size and composition of both groups. An incorrect rule could move films between the groups, changing their median revenue-to-budget multiples and potentially influencing which titles StreamVault prioritises for licensing discussions.
 
 ## Decision
 
-Classify a film as a franchise film when it has a non-empty collection ID and collection name. Classify a film with a blank or null collection value as standalone.
+Classify a film as a franchise film when its `belongs_to_collection` field contains a collection object. Classify it as standalone when the field is empty or null. Apply this rule consistently to every candidate film rather than making individual judgements based on film titles.
 
 ## Alternatives considered
 
-### Alternative A: Classify films manually
+### Alternative A: Classify films manually using their titles
 
-- **How it would work:** Review each film and decide whether it belongs to a franchise.
-- **Why it is attractive:** It allows individual judgement where collection information may be incomplete.
-- **Why rejected:** Manual classification introduces subjective decisions and makes the analysis harder to repeat consistently.
+- **How it would work:** Review film titles and use knowledge of their sequels, spin-offs or shared stories to decide whether they belong to a franchise.
+- **Why it is attractive:** It might identify relationships that are not properly represented in the source collection field.
+- **Why rejected:** A film's title does not reliably establish its collection membership. Manual decisions could classify similar cases differently, making the comparison subjective and difficult to reproduce.
 
-### Alternative B: Use the source collection information
+### Alternative B: Require both a collection ID and collection name
 
-- **How it would work:** Use the collection information supplied for each film to determine its classification.
-- **Why it is attractive:** It provides a consistent rule that can be applied to all candidate films.
+- **How it would work:** Classify a film as a franchise film only when both fields contain values.
+- **Why it is attractive:** It appears to provide two pieces of information to confirm collection membership.
+- **Why rejected:** The tutor's classification rule is based on whether `belongs_to_collection` is empty or populated. Requiring both an ID and name introduces an additional condition that could incorrectly classify a film with a collection object but an incomplete name as standalone.
+
+### Alternative C: Use the `belongs_to_collection` field
+
+- **How it would work:** Treat a populated collection object as franchise membership and an empty or null value as standalone.
+- **Why it is attractive:** It uses the source's explicit collection relationship and gives every film the same classification test.
 - **Why rejected:** Not rejected. This is the accepted approach.
 
 ## Consequences
 
-- **What this buys:** Consistent classification and repeatable franchise-versus-standalone comparisons.
-- **What this costs:** The classification depends on the accuracy and completeness of the supplied collection information.
-- **What it costs the client if I am wrong:** Incorrect collection information could place films in the wrong group and affect the comparison results.
-- **What would make me revisit this:** Evidence that the collection information is incorrect or that the client defines franchise membership differently.
+- **What this buys:** A repeatable classification rule for the franchise-versus-standalone comparison. In the current analysis, it produces 96 franchise films and 16 standalone films across all years, and 63 franchise films and 8 standalone films from 2000 onward.
+- **What this costs:** The analysis depends on the source correctly recording collection membership. A missing or incorrect collection relationship could place a film in the wrong group.
+- **What it costs the client if I am wrong:** Misclassified films could change the group medians and distort the comparison used to prioritise licensing candidates.
+- **What would make me revisit this:** Evidence that the source collection relationships are incomplete or incorrect, or a revised definition of franchise membership from StreamVault.
 
 ## What this survives
 
-The rule can be applied consistently as the candidate list grows from 127 to approximately 500 titles. It does not require manual classification of every new film.
+The same rule can be applied when the candidate list grows from 127 to approximately 500 titles. It avoids introducing manual classification decisions each time new films are added, while keeping the basis of the comparison consistent.

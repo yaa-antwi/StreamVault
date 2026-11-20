@@ -1,7 +1,9 @@
+
 import pandas as pd
 import requests
 import json
 
+from datetime import datetime, timezone
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -13,142 +15,159 @@ from pipeline.config import (
     PROCESSED_DIR
 )
 
-movie_ids = pd.read_csv(
-    CANDIDATE_LIST,
-    dtype=str,
-    keep_default_na=False, # Preserves the literal N/A
-    skip_blank_lines=False
-)
+
+def load_candidate_list():
+    return pd.read_csv(
+        CANDIDATE_LIST,
+        dtype=str,
+        keep_default_na=False,
+        skip_blank_lines=False
+    )
+
 
 def create_session():
-    retry_strategy = Retry(
+    retries = Retry(
         total=5,
         backoff_factor=1,
         status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods={"GET"},
+        allowed_methods=["GET"],
         respect_retry_after_header=True
     )
 
-    adapter = HTTPAdapter(max_retries=retry_strategy)
-
     session = requests.Session()
-    session.mount("https://", adapter)
-
-    session.headers.update({
-        "User-Agent": "StreamVault-Licensing-Analysis/1.0"
-    })
+    session.mount("https://", HTTPAdapter(max_retries=retries))
+    session.headers.update({"User-Agent": "StreamVault-Data-Pipeline"})
 
     return session
 
-def get_cached_movie(movie_id):
-    cache_file = MOVIES_CACHE / f"{movie_id}.json"
-    MOVIES_CACHE.mkdir(parents=True, exist_ok=True)
+
+def fetch_data(movie_id, data_type, session):
+    if data_type == "movie":
+        folder = MOVIES_CACHE
+        url = f"https://api.themoviedb.org/3/movie/{movie_id}"
+    else:
+        folder = CREDITS_CACHE
+        url = f"https://api.themoviedb.org/3/movie/{movie_id}/credits"
+
+    cache_file = folder / f"{movie_id}.json"
+    metadata_file = folder / f"{movie_id}_metadata.json"
 
     if cache_file.exists():
         with open(cache_file, "r", encoding="utf-8") as file:
-            return json.load(file)
+            data = json.load(file)
 
-    return None
+        status = "cached"
+
+    else:
+        try:
+            response = session.get(
+                url,
+                params={"api_key": TMDB_API_KEY},
+                timeout=(3.05, 10)
+            )
+
+            if response.status_code == 404:
+                return None, "not_found"
+
+            response.raise_for_status()
+            data = response.json()
+
+            folder.mkdir(parents=True, exist_ok=True)
+
+            with open(cache_file, "w", encoding="utf-8") as file:
+                json.dump(data, file, indent=4)
+
+            status = "downloaded"
+
+        except (requests.RequestException, ValueError) as error:
+            return None, f"request_error: {error}"
+
+    metadata = {
+        "tmdb_id": movie_id,
+        "data_type": data_type,
+        "retrieved_at": datetime.now(timezone.utc).isoformat(),
+        "status": status
+    }
+
+    with open(metadata_file, "w", encoding="utf-8") as file:
+        json.dump(metadata, file, indent=4)
+
+    return data, status
 
 
 def fetch_movie(movie_id, session):
-    # First, check whether the movie is already saved.
-    cached_movie = get_cached_movie(movie_id)
-
-    if cached_movie is not None:
-        return cached_movie, "cached"
-
-    # If it is not saved, request it from TMDb.
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}"
-
-    try:
-        response = session.get(
-            url,
-            params={"api_key": TMDB_API_KEY},
-            timeout=(3.05, 10)
-        )
-
-        # A 404 means TMDb could not find this movie ID.
-        if response.status_code == 404:
-            return None, "not_found"
-
-        # Raise an error for other unsuccessful HTTP responses.
-        response.raise_for_status()
-
-        movie = response.json()
-
-        # Save the successful response locally.
-        cache_file = MOVIES_CACHE / f"{movie_id}.json"
-
-        with open(cache_file, "w", encoding="utf-8") as file:
-            json.dump(movie, file, indent=2)
-
-        return movie, "downloaded"
-
-    except requests.RequestException as error:
-        return None, f"request_error: {error}"
-
-def get_cached_credits(movie_id):
-    cache_file = CREDITS_CACHE / f"{movie_id}.json"
-
-    if cache_file.exists():
-        with open(cache_file, "r", encoding="utf-8") as file:
-            return json.load(file)
-
-    return None
+    return fetch_data(movie_id, "movie", session)
 
 
 def fetch_credits(movie_id, session):
-    cached_credits = get_cached_credits(movie_id)
+    return fetch_data(movie_id, "credits", session)
 
-    if cached_credits is not None:
-        return cached_credits, "cached"
 
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}/credits"
+def reconcile_candidates(candidates, results_df):
+    reconciliation = candidates.copy()
 
-    try:
-        response = session.get(
-            url,
-            params={"api_key": TMDB_API_KEY},
-            timeout=(3.05, 10)
-        )
+    reconciliation.insert(
+        0, "candidate_entry", range(1, len(candidates) + 1)
+    )
 
-        if response.status_code == 404:
-            return None, "not_found"
+    ids = reconciliation["tmdb_id"].str.strip()
+    numeric = ids.str.isdigit()
 
-        response.raise_for_status()
+    reconciliation["candidate_type"] = "unrecognized_non_numeric"
+    reconciliation.loc[numeric, "candidate_type"] = "numeric_id"
 
-        credits = response.json()
+    reconciliation.loc[
+        numeric & ids.duplicated(), "candidate_type"
+    ] = "duplicate_numeric_id"
 
-        CREDITS_CACHE.mkdir(parents=True, exist_ok=True)
+    reconciliation.loc[ids == "", "candidate_type"] = "blank_id"
+    reconciliation.loc[ids == "N/A", "candidate_type"] = "missing_value_marker"
+    reconciliation.loc[ids == "-1", "candidate_type"] = "invalid_looking_id"
 
-        cache_file = CREDITS_CACHE / f"{movie_id}.json"
+    reconciliation.loc[
+        ids.str.lower().str.startswith("tt"), "candidate_type"
+    ] = "IMDb_id"
 
-        with open(cache_file, "w", encoding="utf-8") as file:
-            json.dump(credits, file, indent=2)
+    status = results_df.set_index("tmdb_id")
 
-        return credits, "downloaded"
+    reconciliation["movie_status"] = ids.map(
+        status["movie_status"]
+    ).fillna("not_requested")
 
-    except requests.RequestException as error:
-        return None, f"request_error: {error}"
+    reconciliation["credits_status"] = ids.map(
+        status["credits_status"]
+    ).fillna("not_requested")
+
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+
+    reconciliation.to_csv(
+        PROCESSED_DIR / "candidate_reconciliation.csv",
+        index=False
+    )
+
+    assert len(reconciliation) == len(candidates)
+
+    return reconciliation
+
 
 def extract_all_movies():
-    # Keep only numeric IDs and remove repeated IDs.
-    valid_ids = movie_ids.loc[
-        movie_ids["tmdb_id"].str.isdigit(),
-        "tmdb_id"
-    ].drop_duplicates().tolist()
+    candidates = load_candidate_list()
+
+    if "tmdb_id" not in candidates.columns:
+        raise ValueError("Candidate list must contain tmdb_id.")
+
+    ids = candidates["tmdb_id"].str.strip()
+    unique_ids = ids[ids.str.isdigit()].drop_duplicates()
 
     session = create_session()
     results = []
 
-    for movie_id in valid_ids:
-        movie, movie_status = fetch_movie(movie_id, session)
+    print(f"Original entries: {len(candidates)}")
+    print(f"Unique numeric IDs: {len(unique_ids)}")
 
-        if movie is not None:
-            credits, credits_status = fetch_credits(movie_id, session)
-        else:
-            credits_status = "not_attempted"
+    for movie_id in unique_ids:
+        movie, movie_status = fetch_movie(movie_id, session)
+        credits, credits_status = fetch_credits(movie_id, session)
 
         results.append({
             "tmdb_id": movie_id,
@@ -156,9 +175,10 @@ def extract_all_movies():
             "credits_status": credits_status
         })
 
+        print(movie_id, movie_status, credits_status)
+
     results_df = pd.DataFrame(results)
 
-    # Save the outcome of every extraction attempt.
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
     results_df.to_csv(
@@ -166,12 +186,16 @@ def extract_all_movies():
         index=False
     )
 
-    print("Unique numeric IDs:", len(valid_ids))
-    print("Extraction results:")
-    print(results_df["movie_status"].value_counts())
+    reconciliation = reconcile_candidates(candidates, results_df)
 
-    print("\nCredits results:")
-    print(results_df["credits_status"].value_counts())
+    print("\nCandidate classifications:")
+    print(reconciliation["candidate_type"].value_counts())
+
+    print("\nMovie retrieval outcomes:")
+    print(reconciliation["movie_status"].value_counts())
+
+    print("\nExtraction completed.")
+    print(f"Original entries accounted for: {len(reconciliation)}")
 
     return results_df
 

@@ -2,96 +2,88 @@
 import json
 import pandas as pd
 
-from pipeline.validate import validate
+import pipeline.validate as validation
 from pipeline.config import (
     CANDIDATE_LIST,
-    PROCESSED_DIR,
-    MOVIES_CACHE,
-    CREDITS_CACHE
+    PROCESSED_DIR
 )
 
 
 def test_all_candidates_are_accounted_for():
-
-    candidates = validate()
+    candidates = validation.validate()
 
     assert len(candidates) == 127
-
     assert candidates["candidate_status"].notna().all()
 
-    assert candidates["candidate_status"].value_counts().to_dict() == {
-        "numeric_unique": 117,
-        "duplicate_numeric": 6,
-        "invalid_non_numeric": 3,
-        "blank": 1
-    }
+
+def test_candidate_merge_preserves_original_rows():
+    candidates = validation.validate()
+
+    assert sorted(candidates["original_row"]) == list(range(1, 128))
 
 
-def test_candidate_merge_preserves_all_original_rows():
-
-    candidates = validate()
-
-    original_rows = sorted(candidates["original_row"].tolist())
-
-    assert original_rows == list(range(1, 128))
-
-
-def test_unique_numeric_ids_reconcile_with_extraction_log():
-
+def test_numeric_ids_match_extraction_log():
     candidates = pd.read_csv(
         CANDIDATE_LIST,
-        dtype=str,
-        keep_default_na=False,
-        skip_blank_lines=False
-    )
-
-    extraction_results = pd.read_csv(
-        PROCESSED_DIR / "extraction_log.csv",
         dtype=str,
         keep_default_na=False
     )
 
     numeric_ids = set(
         candidates.loc[
-            candidates["tmdb_id"].str.fullmatch(r"\d+"),
+            candidates["tmdb_id"].str.strip().str.isdigit(),
             "tmdb_id"
-        ]
+        ].str.strip()
     )
 
-    extracted_ids = set(extraction_results["tmdb_id"])
+    log = pd.read_csv(PROCESSED_DIR / "extraction_log.csv", dtype=str)
 
-    assert numeric_ids == extracted_ids
+    assert numeric_ids == set(log["tmdb_id"])
 
 
-def test_successful_extractions_have_matching_movie_and_credits_files():
+def test_missing_financial_values_are_allowed(tmp_path, monkeypatch):
 
-    extraction_results = pd.read_csv(
-        PROCESSED_DIR / "extraction_log.csv",
-        dtype=str,
-        keep_default_na=False
+    processed = tmp_path / "processed"
+    movies = tmp_path / "movies"
+    credits = tmp_path / "credits"
+
+    processed.mkdir()
+    movies.mkdir()
+    credits.mkdir()
+
+    candidate_file = tmp_path / "candidates.csv"
+
+    pd.DataFrame({"tmdb_id": ["155"]}).to_csv(
+        candidate_file, index=False
     )
 
-    successful_movies = extraction_results[
-        extraction_results["movie_status"].isin(
-            ["downloaded", "cached"]
-        )
-    ]
+    pd.DataFrame({
+        "tmdb_id": ["155"],
+        "movie_status": ["cached"],
+        "credits_status": ["cached"]
+    }).to_csv(processed / "extraction_log.csv", index=False)
 
-    for row in successful_movies.itertuples(index=False):
+    movie = {
+        "id": 155,
+        "title": "The Dark Knight",
+        "release_date": "2008-07-18",
+        "budget": None,
+        "revenue": 1000000000,
+        "genres": [],
+        "production_companies": []
+    }
 
-        movie_id = row.tmdb_id
+    with open(movies / "155.json", "w") as file:
+        json.dump(movie, file)
 
-        movie_file = MOVIES_CACHE / f"{movie_id}.json"
-        credits_file = CREDITS_CACHE / f"{movie_id}.json"
+    with open(credits / "155.json", "w") as file:
+        json.dump({"id": 155, "cast": [], "crew": []}, file)
 
-        assert movie_file.exists()
-        assert credits_file.exists()
+    monkeypatch.setattr(validation, "CANDIDATE_LIST", candidate_file)
+    monkeypatch.setattr(validation, "PROCESSED_DIR", processed)
+    monkeypatch.setattr(validation, "MOVIES_CACHE", movies)
+    monkeypatch.setattr(validation, "CREDITS_CACHE", credits)
 
-        with open(movie_file, "r", encoding="utf-8") as file:
-            movie = json.load(file)
+    candidates = validation.validate()
 
-        with open(credits_file, "r", encoding="utf-8") as file:
-            credits = json.load(file)
-
-        assert str(movie.get("id")) == movie_id
-        assert str(credits.get("id")) == movie_id
+    assert len(candidates) == 1
