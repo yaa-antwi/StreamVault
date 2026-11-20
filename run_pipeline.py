@@ -1,4 +1,3 @@
-
 from pipeline.extract import extract_all_movies
 from pipeline.validate import validate
 from pipeline.transform import transform
@@ -10,25 +9,24 @@ def run_pipeline():
 
     print("STREAMVAULT DATA PIPELINE")
 
-    # Stage 1: Extract
-    print("\n[STAGE 1/5] EXTRACTING DATA")
-    extract_all_movies()
+    stages = [
+        ("EXTRACTING DATA", extract_all_movies),
+        ("VALIDATING EXTRACTED DATA", validate),
+        ("TRANSFORMING DATA", transform),
+        ("RUNNING QUALITY CHECKS", run_checks),
+        ("LOADING FINAL DATA", load),
+    ]
 
-    # Stage 2: Validate
-    print("\n[STAGE 2/5] VALIDATING EXTRACTED DATA")
-    validate()
+    for number, (stage_name, stage_function) in enumerate(stages, start=1):
+        print(f"\n[STAGE {number}/5] {stage_name}")
 
-    # Stage 3: Transform
-    print("\n[STAGE 3/5] TRANSFORMING DATA")
-    transform()
+        try:
+            stage_function()
+            print(f"[SUCCESS] {stage_name} completed.")
 
-    # Stage 4: Quality checks
-    print("\n[STAGE 4/5] RUNNING QUALITY CHECKS")
-    run_checks()
-
-    # Stage 5: Load
-    print("\n[STAGE 5/5] LOADING FINAL DATA")
-    load()
+        except Exception as error:
+            print(f"[FAILED] {stage_name}: {error}")
+            raise
 
     print("\nSTREAMVAULT PIPELINE COMPLETED")
 
