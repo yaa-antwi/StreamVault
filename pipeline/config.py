@@ -11,6 +11,7 @@ RAW_DIR = DATA_DIR / "raw"
 MOVIES_CACHE = RAW_DIR / "movies"
 CREDITS_CACHE = RAW_DIR / "credits"
 PROCESSED_DIR = DATA_DIR / "processed"
+FINAL_DIR = DATA_DIR / "final"
 
 load_dotenv(PROJECT_ROOT / ".env")
 
