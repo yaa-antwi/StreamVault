@@ -2,47 +2,43 @@
 
 **From:** Data Engineering Consultant  
 **Date:** 20 November 2026  
-**Subject:** Findings from the film licensing analysis
+**Subject:** Film licensing analysis — findings and recommendation
 
 ## What I found
 
-Franchise films had higher median historical revenue-to-budget multiples than standalone films:
+Franchise films had higher median box-office-to-production-budget figures than standalone films in both periods:
 
-- **All years:** 5.62x vs 3.84x (96 franchise, 16 standalone).
-- **2000 onward:** 5.05x vs 3.84x (63 franchise, 8 standalone).
+- **All years:** 5.62x for franchises versus 3.84x for standalone films.
+- **2000 onward:** 5.05x versus 3.84x.
 
-The post-2000 standalone result should be treated cautiously because it covers only eight films. These multiples compare box-office revenue with production budgets; they do not measure profit or StreamVault's licensing returns.
+The difference remains in the more recent period, but the standalone comparison contains only eight films. Older films also produced some of the highest figures, and inflation has not been accounted for.
 
-**Strong collection results:**
-- The Lord of the Rings: 11.73x (3 films).
-- Ice Age: 8.26x (3 films).
-- Avengers: 6.87x (4 films).
+Three collections stood out: The Lord of the Rings (11.73x across 3 films), Ice Age (8.26x across 3) and The Avengers (6.87x across 4). These are median results from the individual films, not returns for buying the complete collections.
 
-**Top post-2000 standalone titles:** Spirited Away (14.47x), Inception (5.24x), Interstellar (4.52x), Memento (4.45x) and The Departed (3.24x).
+Among standalone films released from 2000 onward, Spirited Away (14.47x), Inception (5.24x), Interstellar (4.52x), Memento (4.45x) and The Departed (3.24x) had the highest figures.
 
-Steven Spielberg directed 8 candidate films. Daniel Radcliffe, Emma Watson, Harrison Ford and Rupert Grint each appeared among the top five billed cast members on 8 films. These counts do not establish that their involvement caused stronger financial performance.
-
-Of 117 unique valid candidate IDs, 112 titles were retrieved. Five returned `not_found` and remain outside the analysis.
+Steven Spielberg appeared on 8 candidate films. Daniel Radcliffe, Emma Watson, Harrison Ford and Rupert Grint each appeared among the top five billed cast members on 8 films. These counts do not prove that a director or actor caused stronger financial results.
 
 ## What I built
 
 | What you asked for | Status | Evidence |
 |---|---|---|
-| Review the candidate list | Complete | 127 entries reconciled into 117 unique valid IDs, 6 duplicates and 4 invalid entries |
-| Retrieve and prepare title information | Complete, with exclusions | 112 titles retrieved; 5 IDs not found |
-| Compare franchise and standalone films | Complete | Median multiples calculated for both periods, with group sizes |
-| Examine titles and collections | Complete | Title rankings and collection summaries produced |
-| Examine directors and lead cast | Complete | Director and top-five-billed cast counts produced |
-| Check the prepared information | Complete | 29 automated tests and 12 data checks passed |
+| Review and reconcile the candidate list | Complete | 127 entries reduced to 117 unique valid IDs after removing 6 duplicates and 4 invalid entries. |
+| Retrieve and prepare the film information | Complete with gaps | 112 films retrieved; 5 IDs could not be found and were excluded. |
+| Compare franchise and standalone films across two periods | Complete | Comparisons completed for all years and 2000 onward. |
+| Examine leading films, collections and people | Complete | Film rankings, collection comparisons, director and cast counts produced. |
+| Check the data and the work | Passed | 29 automated tests and 12 data checks passed. |
 
 ## What I recommend
 
-Prioritise The Lord of the Rings, Ice Age and Avengers collections, alongside the five leading post-2000 standalone titles, for further licensing investigation. These are candidates for discussion, not confirmed purchases.
+Prioritise The Lord of the Rings, Ice Age and The Avengers collections, together with the five leading standalone films, for further licensing investigation.
 
-Do not approve the $14 million spend based on box-office results alone. Obtain licensing prices, contract terms and complete bundle lists, then compare the full costs with expected value. Also identify the five unretrieved titles and assess their effect on the shortlist.
+Before committing the $14 million budget, obtain the actual licensing prices, contract terms and complete lists of films in each offer. Compare the full cost of each deal with its expected value to StreamVault. Investigate the five missing films before treating the candidate list as complete.
 
 ## What I could not stand behind
 
-This analysis cannot establish which titles will be profitable or whether the $14 million spend represents good value. Licensing prices, contract terms and expected streaming revenue were not available.
+The information available does not include licensing prices, contract terms, marketing and distribution costs, or expected streaming revenue. Box-office revenue compared with production budgets is therefore not profit or evidence of what StreamVault would earn from a licence.
 
-Collection results cover only the retrieved candidate films, not necessarily every film in a proposed bundle. The five unretrieved titles also remain unidentified.
+The collection figures cover only the films retrieved for this analysis, not necessarily every film in a studio's offer. Historical figures are also not adjusted for inflation.
+
+**The findings identify films worth investigating; they do not establish which deals are profitable or justify spending the $14 million.**
