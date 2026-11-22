@@ -2,14 +2,16 @@
 
 **From:** Data Engineering Consultant  
 **Date:** 20 November 2026  
-**Subject:** Film licensing analysis — findings and recommendation
+**Subject:** Film licensing analysis - findings and recommendation
 
 ## What I found
 
-Franchise films had higher median box-office-to-production-budget figures than standalone films in both periods:
+Franchise films generally made more money at the box office compared with what it cost to make them.
 
-- **All years:** 5.62x for franchises versus 3.84x for standalone films.
-- **2000 onward:** 5.05x versus 3.84x.
+- **All years:** Franchise films made about 5.62 times their production budgets, compared with 3.84 times for standalone films.
+- **2000 onward:** Franchise films made about 5.05 times their production budgets, compared with 3.84 times for standalone films.
+
+These are historical cinema figures, not the money StreamVault would earn from licensing the films.
 
 The difference remains in the more recent period, but the standalone comparison contains only eight films. Older films also produced some of the highest figures, and inflation has not been accounted for.
 
