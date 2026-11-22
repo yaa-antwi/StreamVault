@@ -50,7 +50,7 @@ pip install -r requirements.txt
 Create a `.env` file in the project folder and add:
 
 ```text
-TMdb_API_KEY=your_api_key
+TMDB_API_KEY=your_api_key
 ```
 
 **5. Run the data pipeline**
