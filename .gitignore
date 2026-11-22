@@ -11,6 +11,7 @@ venv/
 .pytest_cache/
 # Data files
 *.csv
+!data/id_list.csv
 *.json
 # Allow small synthetic test data
 !data/sample/**
